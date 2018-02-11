@@ -30,23 +30,21 @@
 
 'use strict';
 
-let url = require('url');
-let fs = require('fs');
+const http = require('http')
+const url = require('url');
+const fs = require('fs');
 
-require('http').createServer(function(req, res) {
-
+http.createServer((req, res) => {
+  
   let pathname = decodeURI(url.parse(req.url).pathname);
 
   switch(req.method) {
   case 'GET':
     if (pathname == '/') {
-      // отдачу файлов следует переделать "правильно", через потоки, с нормальной обработкой ошибок
-      fs.readFile(__dirname + '/public/index.html', (err, content) => {
-        if (err) throw err;
-        res.setHeader('Content-Type', 'text/html;charset=utf-8');
-        res.end(content);
-      });
-      return;
+      const index = fs.readStream(__dirname + '/public/index.html')
+      sendFile(index, res)
+
+      return
     }
 
   default:
@@ -55,3 +53,28 @@ require('http').createServer(function(req, res) {
   }
 
 }).listen(3000);
+
+function sendFile(file, res) {
+  file.on('readable', write)
+
+  function write() {
+    const fileContent = file.read() //считать
+
+
+    //если res принимает данные очень быстро то res.write возвращает true
+    //если буфер переполнен write.res вернет false и мы временно отказываемся
+    //обрабатывать событие readable на файле
+    if (fileContent && !res.write(fileContent)) {
+      file.removeListener('readable', write)
+
+      res.once('drain', () => { //подождать drain
+        file.on('readable', write)
+        write()
+      })
+    }
+
+    file.on('end' () => {
+      res.end()
+    })
+  }
+}
