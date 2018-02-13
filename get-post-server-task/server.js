@@ -36,7 +36,7 @@ const fs = require('fs')
 const mime = require('mime')
 const config = require('config')
 
-http.createServer((req, res) => {
+module.exports = http.createServer((req, res) => {
 
   const pathname = decodeURI(url.parse(req.url).pathname);
   const filename = pathname.slice(1) // /file.ext => file.ext
@@ -74,7 +74,7 @@ http.createServer((req, res) => {
       res.end("Not implemented");
   }
 
-}).listen(3000);
+})
 
 function receiveFile(filepath, req, res) {
   let size = 0
