@@ -168,7 +168,7 @@ function sendFile(filepath, res) {
           if (!res.headersSent) {
             //500 Internal Server Error
             //A generic error message, given when an unexpected condition was encountered
-            //and no more specific message is suitable.[61]
+            //and no more specific message is suitable.
             res.statusCode = 500
             res.end("Server Error")
           } else {
@@ -182,7 +182,7 @@ function sendFile(filepath, res) {
       })
 
   //if connection was broken by client
-  res.on('close', () => file.destroy())
+  res.on('close', () => fileStream.destroy())
 }
 
 // function sendFile(file, res) {
