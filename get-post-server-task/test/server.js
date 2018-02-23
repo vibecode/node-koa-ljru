@@ -1,33 +1,65 @@
-const assert = require('assert')
+/* global describe, context, it, before, after, beforeEach  */
+
+// (!!!) encoding: null to get buffer,
+// https://github.com/request/request/issues/823#issuecomment-59208292
+
+// simple: false means that we don't want to reject promise if response.statusCode not 2..
+
+const request = require('request-promise').defaults({
+  encoding: null,
+  simple: false,
+  resolveWithFullResponse: true
+})
+
+const fs = require('fs-extra')
+const config = require('config')
+const Readable = require('stream').Readable;
+
+const host = 'http://127.0.0.1:3000';
+
 const server = require('../server')
-const request = require('request')
-const fs = require('fs')
 
-describe('server tests', () => {
-  let app
+// not in config, because many test dirs are possible
+const fixturesRoot = __dirname + '/fixtures';
 
+describe('Server', () => {
   before(done => {
-    app = server.listen(3000, done)
+    server.listen(3000, '127.0.0.1', done)
   })
 
-  after(done => app.close(done))
+  after(done => {
+    server.close(done)
+  })
 
-  it('should return index.html', done => {
-    /*
-      1. запустить сервер (before)
-      2. сделать запрос
-      3. прочесть файл с диска
-      4. дождаться ответа от сервера
-      5. сравнить файл с диска с тем, что пришел с сервера
-    */
+  beforeEach(() => {
+    fs.emptyDirSync(config.get('filesRoot'))
+  })
 
-    request('http://localhost:3000', (err, res, body) => {
-      if (err) return done(err)
+  describe('GET /file.ext', () =>{
+    context('When exists', () => {
+      beforeEach(() => {
+        // 'before' will not do here,
+        // because it works 'before tests'
+        // and parent beforeEach works 'before each test', that is after before
+        fs.copySync(`${fixturesRoot}/small.png`, config.get('filesRoot') + '/small.png');
+      });
 
-      const file = fs.readFileSync('public/index.html', { encoding: 'utf-8' })
-      assert.equal(body, file)
+      it('returns 200 & the file', async function () {
+        let fixtureContent = fs.readFileSync(`${fixturesRoot}/small.png`);
 
-      done()
-    })
+        const response = await request.get(`${host}/small.png`);
+
+        response.body.equals(fixtureContent).should.be.true();
+      });
+    });
+
+    context('otherwise', () => {
+      it('returns 404', async function () {
+
+        const response = await request.get(`${host}/small.png`);
+
+        response.statusCode.should.be.equal(404);
+      });
+    });
   })
 })
